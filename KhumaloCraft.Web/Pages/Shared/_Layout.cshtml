@@ -28,7 +28,6 @@ new { Page = "/Admin/Payments/Index", Text = "Payments" }, *@
   <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.10.5/font/bootstrap-icons.min.css" />
   <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-  <link rel="stylesheet" href="~/KhumaloCraft.styles.css" asp-append-version="true" />
 </head>
 
 <body class="d-flex flex-column min-vh-100">
@@ -75,6 +74,7 @@ new { Page = "/Admin/Payments/Index", Text = "Payments" }, *@
 
       const signalRHubUrl = "@ViewData["SignalRHubUrl"]";
       const apiHost = "@ViewData["ApiHost"]";
+      const vapid = "@ViewData["VapidPublic"]";
 
       const connection = new signalR.HubConnectionBuilder()
         .withUrl(signalRHubUrl)
@@ -91,19 +91,41 @@ new { Page = "/Admin/Payments/Index", Text = "Payments" }, *@
         }
       }
 
-      // Display toast and increment message count on new message
-      connection.on("ReceiveNotification", function (message) {
+      // Handle incoming SignalR messages
+      connection.on("ReceiveNotification", async function (message) {
         showToast(message);
-        newMessageCount++; // Increment the count for new messages
-        updateMessageCount(); // Update badge
+        newMessageCount++;
+        updateMessageCount();
+
+        if ("serviceWorker" in navigator && "PushManager" in window) {
+          console.log("Service Worker and Push Manager available");
+
+          try {
+            console.log("Waiting for Service Worker to be ready...");
+            const registration = await navigator.serviceWorker.ready;
+            console.log("Service Worker is ready for push");
+
+            registration.showNotification("New Notification:", {
+              body: `Status updated to ${message}`,
+              icon: '/images/logo-k.svg',
+              vibrate: [200, 100, 200],
+              tag: 'new-message'
+            });
+          } catch (err) {
+            console.error("Error displaying notification:", err);
+          }
+        } else {
+          console.log("Service Worker or Push Manager not available.");
+        }
       });
 
+      // Start the SignalR connection
       connection.start()
         .then(() => console.log("Connected to SignalR"))
         .catch(err => console.error("Error connecting to SignalR:", err));
 
+      // Fetch unread notifications
       try {
-        // Fetch unread notifications on page load
         const userId = "@User.FindFirstValue(ClaimTypes.NameIdentifier)";
         const response = await fetch(`${apiHost}api/notifications/user/${userId}/unread`);
 
@@ -113,15 +135,58 @@ new { Page = "/Admin/Payments/Index", Text = "Payments" }, *@
         }
 
         const notifications = await response.json();
-        // Set the initial count of unread messages
         newMessageCount = notifications.filter(n => !n.isRead).length;
-        updateMessageCount(); // Update the badge on load with the initial count
+        updateMessageCount();
 
       } catch (error) {
         console.error("Error fetching unread notifications:", error);
       }
+
+      // Function to subscribe to push notifications
+      async function subscribeUser() {
+        const registration = await navigator.serviceWorker.ready;
+
+        // Convert VAPID key to Uint8Array
+        const applicationServerKey = urlBase64ToUint8Array(vapid);
+        const subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: applicationServerKey
+        });
+      }
+
+      // Request notification permission and subscribe
+      if (Notification.permission === "granted") {
+        subscribeUser();
+      } else if (Notification.permission === "default") {
+        Notification.requestPermission().then(permission => {
+          if (permission === "granted") {
+            subscribeUser();
+          }
+        });
+      }
+
+      // Register service worker
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("/service-worker.js")
+          .then((registration) => {
+            console.log("Service Worker registered:", registration);
+          })
+          .catch(error => {
+            console.error("Service Worker registration failed:", error);
+          });
+      }
+
+      // Helper function to decode base64 URL
+      function urlBase64ToUint8Array(base64String) {
+        const padding = '='.repeat((4 - base64String.length % 4) % 4);
+        const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+        const rawData = window.atob(base64);
+        return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
+      }
     });
   </script>
+
+
 </body>
 
 </html>
