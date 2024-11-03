@@ -13,12 +13,14 @@ namespace KhumaloCraft.BusinessAPI.Controllers
     {
         private readonly INotificationsService _notificationsService;
         private readonly IHubContext<NotificationHub> _hubContext;
+        private readonly ISubscriptionService _subscriptionService;
 
 
-        public NotificationsController(INotificationsService notificationsService, IHubContext<NotificationHub> hubContext)
+        public NotificationsController(INotificationsService notificationsService, IHubContext<NotificationHub> hubContext, ISubscriptionService subscriptionService)
         {
             _notificationsService = notificationsService;
             _hubContext = hubContext;
+            _subscriptionService = subscriptionService;
         }
 
         // 1. Add a new notification
@@ -80,6 +82,27 @@ namespace KhumaloCraft.BusinessAPI.Controllers
             await _hubContext.Clients.All.SendAsync("ReceiveNotification", formattedMessage);
 
             return Ok("Notification sent to all clients.");
+        }
+
+        [HttpPost("save-subscription")]
+        public async Task<IActionResult> SaveSubscription([FromBody] PushSubscriptionDTO subscription)
+        {
+            if (subscription == null || string.IsNullOrEmpty(subscription.Endpoint))
+            {
+                return BadRequest("Invalid subscription data.");
+            }
+
+            // Save subscription to the database
+            bool isSaved = await _subscriptionService.SaveSubscriptionAsync(subscription);
+
+            if (isSaved)
+            {
+                return Ok("Subscription saved successfully.");
+            }
+            else
+            {
+                return StatusCode(500, "Failed to save subscription.");
+            }
         }
     }
 }

@@ -3,6 +3,9 @@ using KhumaloCraft.Data.Entities;
 using KhumaloCraft.Data.Repositories.Interfaces;
 using KhumaloCraft.Shared.DTOs;
 using Microsoft.Extensions.DependencyInjection;
+using Lib.Net.Http.WebPush;
+using Lib.Net.Http.WebPush.Authentication;
+using Microsoft.Extensions.Configuration;
 
 namespace KhumaloCraft.Business.Services;
 
@@ -11,12 +14,21 @@ public class NotificationsService : INotificationsService
   private readonly INotificationsRepository _notificationsRepo;
   private readonly IUserRepository _userRepository;
   private readonly IServiceScopeFactory _scopeFactory;
+  private readonly ISubscriptionService _subscriptionService;
+  private readonly PushServiceClient _pushClient;
 
-  public NotificationsService(INotificationsRepository notificationsRepo, IUserRepository userRepo, IServiceScopeFactory scopeFactory)
+  public NotificationsService(INotificationsRepository notificationsRepo, IUserRepository userRepo, IServiceScopeFactory scopeFactory, ISubscriptionService subscriptionService, IConfiguration configuration)
   {
     _notificationsRepo = notificationsRepo;
     _userRepository = userRepo;
     _scopeFactory = scopeFactory;
+    _subscriptionService = subscriptionService;
+    _pushClient = new PushServiceClient
+    {
+      DefaultAuthentication = new VapidAuthentication(
+            configuration["VapidKeys:PublicKey"],
+            configuration["VapidKeys:PrivateKey"])
+    };
   }
 
   public async Task AddNotificationAsync(string userId, string message)
@@ -79,4 +91,27 @@ public class NotificationsService : INotificationsService
       IsRead = n.IsRead
     }).ToList();
   }
+
+  /*   public async Task SendPushNotificationAsync(string title, string body)
+    {
+      var subscriptions = await _subscriptionService.GetAllSubscriptionsAsync();
+
+      foreach (var sub in subscriptions)
+      {
+        var pushSubscription = new PushSubscriptionDTO
+        {
+          Endpoint = sub.Endpoint,
+          P256dh = sub.P256dh,
+          Auth = sub.Auth
+        };
+
+        var notification = new PushMessage
+        {
+          Title = title,
+          Body = body
+        };
+
+        await _pushClient.RequestPushMessageDeliveryAsync(pushSubscription, notification);
+      }
+    } */
 }
