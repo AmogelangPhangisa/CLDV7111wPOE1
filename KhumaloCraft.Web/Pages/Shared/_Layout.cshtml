@@ -152,12 +152,11 @@ new { Page = "/Admin/Payments/Index", Text = "Payments" }, *@
           userVisibleOnly: true,
           applicationServerKey: applicationServerKey
         });
-        const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+
         await fetch(`${apiHost}api/notifications/save-subscription`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "RequestVerificationToken": token
           },
           body: JSON.stringify(subscription)
         });

@@ -31,12 +31,14 @@ var host = new HostBuilder()
         services.AddScoped<IStatusRepository, StatusRepository>();
         services.AddScoped<INotificationsRepository, NotificationsRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
 
         services.AddScoped<IProductService, ProductService>();
         services.AddScoped<ICategoryService, CategoryService>();
         services.AddScoped<IOrderService, OrderService>();
         services.AddScoped<IStatusService, StatusService>();
         services.AddScoped<INotificationsService, NotificationsService>();
+        services.AddScoped<ISubscriptionService, SubscriptionService>();
         services.AddScoped<CartService>();
     })
     .Build();
