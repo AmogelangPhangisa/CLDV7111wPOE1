@@ -9,4 +9,5 @@ public interface INotificationsService
   Task<IEnumerable<NotificationDTO>> GetNotificationsForUserAsync(string userId);
   Task MarkNotificationAsReadAsync(int notificationId);
   Task<IEnumerable<NotificationDTO>> GetUnreadNotificationsForUserAsync(string userId);
+  Task SendPushNotificationToAllUsersAsync(string title, string message);
 }

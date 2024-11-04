@@ -84,13 +84,15 @@ namespace KhumaloCraft.BusinessAPI.Controllers
             return Ok("Notification sent to all clients.");
         }
 
-        [HttpPost("save-subscription")]
-        public async Task<IActionResult> SaveSubscription([FromBody] PushSubscriptionDTO subscription)
+        [HttpPost("save-subscription/{userId}")]
+        public async Task<IActionResult> SaveSubscription(string userId, [FromBody] PushSubscriptionDTO subscription)
         {
             if (subscription == null || string.IsNullOrEmpty(subscription.Endpoint))
             {
                 return BadRequest("Invalid subscription data.");
             }
+
+            subscription.UserId = userId;
 
             // Save subscription to the database
             bool isSaved = await _subscriptionService.SaveSubscriptionAsync(subscription);

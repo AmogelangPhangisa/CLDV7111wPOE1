@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Lib.Net.Http.WebPush;
 using Lib.Net.Http.WebPush.Authentication;
 using Microsoft.Extensions.Configuration;
+using System.Net;
 
 namespace KhumaloCraft.Business.Services;
 
@@ -92,26 +93,47 @@ public class NotificationsService : INotificationsService
     }).ToList();
   }
 
-  /*   public async Task SendPushNotificationAsync(string title, string body)
+  public async Task SendPushNotificationToAllUsersAsync(string title, string body)
+  {
+    // Retrieve all subscriptions
+    var subscriptions = await _subscriptionService.GetAllSubscriptionsAsync();
+
+    foreach (var sub in subscriptions)
     {
-      var subscriptions = await _subscriptionService.GetAllSubscriptionsAsync();
-
-      foreach (var sub in subscriptions)
+      // Create PushSubscriptionDTO with nested Keys object
+      // Convert PushSubscriptionDTO to Lib.Net.Http.WebPush.PushSubscription
+      var pushSubscription = new PushSubscription
       {
-        var pushSubscription = new PushSubscriptionDTO
-        {
-          Endpoint = sub.Endpoint,
-          P256dh = sub.P256dh,
-          Auth = sub.Auth
-        };
+        Endpoint = sub.Endpoint,
+        Keys = new Dictionary<string, string>
+            {
+                { "p256dh", sub.P256dh },
+                { "auth", sub.Auth }
+            }
+      };
 
-        var notification = new PushMessage
-        {
-          Title = title,
-          Body = body
-        };
+      // Combine title and body into a single content string
+      var content = $"{title} {body}";
 
+      // Create the notification payload using the single-parameter constructor
+      var notification = new PushMessage(content);
+
+      // Send push notification
+
+      try
+      {
         await _pushClient.RequestPushMessageDeliveryAsync(pushSubscription, notification);
       }
-    } */
+      catch (PushServiceClientException ex) when (ex.StatusCode == HttpStatusCode.Gone)
+      {
+        Console.WriteLine(ex.ToString());
+        // Remove expired subscription
+        // await _subscriptionService.RemoveSubscriptionAsync(sub); // Make sure this method exists
+      }
+      catch (Exception ex)
+      {
+        Console.WriteLine(ex.ToString());
+      }
+    }
+  }
 }

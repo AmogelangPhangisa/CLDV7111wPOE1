@@ -54,6 +54,9 @@ namespace KhumaloCraft.BusinessFunctions.Notifications
     {
       await _notificationsService.AddNotificationToAllUsersAsync($"{request.ProductName} - {request.Message}");
 
+      // Send the push notification
+      await _notificationsService.SendPushNotificationToAllUsersAsync(request.ProductName, request.Message);
+
       var jsonPayload = JsonSerializer.Serialize(request);
       var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 

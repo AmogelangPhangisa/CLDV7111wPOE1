@@ -24,8 +24,8 @@ public class SubscriptionService : ISubscriptionService
     {
       UserId = subscription.UserId,
       Endpoint = subscription.Endpoint,
-      P256dh = subscription.P256dh,
-      Auth = subscription.Auth
+      P256dh = subscription.Keys.P256dh,
+      Auth = subscription.Keys.Auth
     };
 
     // Add or update the subscription in the database
@@ -36,8 +36,8 @@ public class SubscriptionService : ISubscriptionService
     else
     {
       // Update existing subscription keys in case they changed
-      existingSubscription.P256dh = subscription.P256dh;
-      existingSubscription.Auth = subscription.Auth;
+      existingSubscription.P256dh = subscription.Keys.P256dh;
+      existingSubscription.Auth = subscription.Keys.Auth;
       return await _subscriptionRepository.UpdateSubscriptionAsync(existingSubscription);
     }
   }

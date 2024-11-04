@@ -75,6 +75,7 @@ new { Page = "/Admin/Payments/Index", Text = "Payments" }, *@
       const signalRHubUrl = "@ViewData["SignalRHubUrl"]";
       const apiHost = "@ViewData["ApiHost"]";
       const vapid = "@ViewData["VapidPublic"]";
+      const userId = "@User.FindFirstValue(ClaimTypes.NameIdentifier)";
 
       const connection = new signalR.HubConnectionBuilder()
         .withUrl(signalRHubUrl)
@@ -105,12 +106,15 @@ new { Page = "/Admin/Payments/Index", Text = "Payments" }, *@
             const registration = await navigator.serviceWorker.ready;
             console.log("Service Worker is ready for push");
 
-            registration.showNotification("New Notification:", {
-              body: `Status updated to ${message}`,
-              icon: '/images/logo-k.svg',
-              vibrate: [200, 100, 200],
-              tag: 'new-message'
-            });
+            if (!userId) {
+              registration.showNotification("New Notification:", {
+                body: `${message}`,
+                icon: '/images/logo-k.svg',
+                image: 'https://st10464558.azurewebsites.net/images/product-items-4.jpeg'
+                vibrate: [200, 100, 200],
+                tag: 'new-message'
+              });
+            }
           } catch (err) {
             console.error("Error displaying notification:", err);
           }
@@ -126,7 +130,10 @@ new { Page = "/Admin/Payments/Index", Text = "Payments" }, *@
 
       // Fetch unread notifications
       try {
-        const userId = "@User.FindFirstValue(ClaimTypes.NameIdentifier)";
+        if (!userId) {
+          return;
+        }
+
         const response = await fetch(`${apiHost}api/notifications/user/${userId}/unread`);
 
         if (!response.ok) {
@@ -153,7 +160,7 @@ new { Page = "/Admin/Payments/Index", Text = "Payments" }, *@
           applicationServerKey: applicationServerKey
         });
 
-        await fetch(`${apiHost}api/notifications/save-subscription`, {
+        await fetch(`${apiHost}api/notifications/save-subscription/${userId}`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -163,18 +170,22 @@ new { Page = "/Admin/Payments/Index", Text = "Payments" }, *@
       }
 
       // Request notification permission and subscribe
-      if (Notification.permission === "granted") {
-        subscribeUser();
-      } else if (Notification.permission === "default") {
-        Notification.requestPermission().then(permission => {
-          if (permission === "granted") {
-            subscribeUser();
-          }
-        });
+      if (userId) {
+        if (Notification.permission === "granted") {
+          subscribeUser();
+        } else if (Notification.permission === "default") {
+          Notification.requestPermission().then(permission => {
+            if (permission === "granted") {
+              subscribeUser();
+            } else {
+              console.log("Notification permission denied.");
+            }
+          });
+        }
       }
 
       // Register service worker
-      if ("serviceWorker" in navigator) {
+      if (userId && "serviceWorker" in navigator) {
         navigator.serviceWorker.register("/service-worker.js")
           .then((registration) => {
             console.log("Service Worker registered:", registration);
